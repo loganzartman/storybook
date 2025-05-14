@@ -1,12 +1,11 @@
-const { Parcel } = require("@parcel/core");
+const { Parcel, createWorkerFarm } = require("@parcel/core");
 const path = require("path");
 const { createProxyMiddleware } = require("http-proxy-middleware");
 const fs = require("fs");
+const os = require("os");
 
 const { generateIframeModern } = require("./gen-iframe-modern.js");
 const { generatePreviewModern } = require("./gen-preview-modern.js");
-
-const generatedEntries = path.join(__dirname, "generated-entries");
 
 exports.start = async function ({ options, router }) {
   let parcel = await createParcel(options, true);
@@ -72,6 +71,8 @@ exports.previewPresets = [];
 exports.bail = async () => {};
 
 async function createParcel(options, isDev = false) {
+  const generatedEntries = path.join(options.outputDir, "generated-entries");
+
   fs.mkdirSync(generatedEntries, { recursive: true });
   fs.writeFileSync(
     path.join(generatedEntries, "iframe.html"),
@@ -86,6 +87,8 @@ async function createParcel(options, isDev = false) {
     entries: path.join(generatedEntries, "iframe.html"),
     config: path.resolve(options.configDir, ".parcelrc"),
     mode: isDev ? "development" : "production",
+    shouldDisableCache: true,
+    ...(os.platform() === 'win32' && {workerFarm: createWorkerFarm({maxConcurrentWorkers: 1})}),
     serveOptions: isDev
       ? {
           port: 3000,
